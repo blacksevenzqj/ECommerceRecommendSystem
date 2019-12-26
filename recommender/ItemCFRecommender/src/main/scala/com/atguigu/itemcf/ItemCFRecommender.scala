@@ -82,17 +82,17 @@ object ItemCFRecommender {
 
     // 提取需要的数据，包装成( productId1, (productId2, score) )
     val simDF = cooccurrenceDF.map{
-      row =>
-        val coocSim = cooccurrenceSim( row.getAs[Long]("cocount"), row.getAs[Long]("count1"), row.getAs[Long]("count2") )
-        ( row.getInt(0), ( row.getInt(1), coocSim ) )
-    }
+        row =>
+          val coocSim = cooccurrenceSim( row.getAs[Long]("cocount"), row.getAs[Long]("count1"), row.getAs[Long]("count2") )
+          ( row.getInt(0), ( row.getInt(1), coocSim ) )
+      }
       .rdd
       .groupByKey()
       .map{
         case (productId, recs) =>
           ProductRecs( productId, recs.toList
                                         .filter(x=>x._1 != productId)
-                                        .sortWith(_._2>_._2)
+                                        .sortWith(_._2 > _._2)
                                         .take(MAX_RECOMMENDATION)
                                         .map(x=>Recommendation(x._1,x._2)) )
       }
@@ -113,4 +113,5 @@ object ItemCFRecommender {
   def cooccurrenceSim(coCount: Long, count1: Long, count2: Long): Double ={
     coCount / math.sqrt( count1 * count2 )
   }
+
 }
