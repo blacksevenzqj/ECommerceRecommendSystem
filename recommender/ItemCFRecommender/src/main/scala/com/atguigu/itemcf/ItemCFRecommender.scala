@@ -54,6 +54,7 @@ object ItemCFRecommender {
       .toDF("userId", "productId", "score")
       .cache()
 
+    // “同现相似度”—— 利用行为数据计算不同商品间的相似度
     // TODO: 核心算法，计算同现相似度，得到商品的相似列表
     // 统计每个商品的评分个数，按照productId来做group by
     val productRatingCountDF = ratingDF.groupBy("productId").count()
