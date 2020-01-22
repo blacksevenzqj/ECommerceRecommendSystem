@@ -64,8 +64,16 @@ object ContentRecommender {
     val wordsDataDF = tokenizer.transform(productTagsDF)
 
     // 2. 定义一个HashingTF工具，计算频次
-    val hashingTF = new HashingTF().setInputCol("words").setOutputCol("rawFeatures").setNumFeatures(800)
+    val hashingTF = new HashingTF().setInputCol("words").setOutputCol("rawFeatures").setNumFeatures(800) // 哈希碰撞
     val featurizedDataDF = hashingTF.transform(wordsDataDF)
+    /*
+      如：
+      (300, [50, 138, 202, 210, 250], [1.0, 1.0, 1.0, 1.0, 1.0])
+      1、300为整个向量的总长度；
+      2、[50, 138, 202, 210, 250]为总长度为300向量的位置索引的稀疏向量（300长度的向量中哪些索引位置有值）；
+      3、[1.0, 1.0, 1.0, 1.0, 1.0]为稀疏向量 对应的 频次。
+      注意：这只是示例，300的总长度会产生哈希碰撞，可以去掉.setNumFeatures(数字)方法，让程序自行计算。最后设置为800。
+     */
 
     // 3. 定义一个IDF工具，计算TF-IDF
     val idf = new IDF().setInputCol("rawFeatures").setOutputCol("features")
@@ -73,8 +81,16 @@ object ContentRecommender {
     val idfModel = idf.fit(featurizedDataDF)
     // 得到增加新列features的DF
     val rescaledDataDF = idfModel.transform(featurizedDataDF)
+    /*
+      (300, [50, 138, 202, 210, 250], [1.333, 2.6666, 3.666, 1.999, 2.3778])
+      1、300为整个向量的总长度；
+      2、[50, 138, 202, 210, 250]为总长度为300向量的位置索引的稀疏向量（300长度的向量中哪些索引位置有值）；
+      3、[1.333, 2.6666, 3.666, 1.999, 2.3778]为稀疏向量 对应的 TFIDF值。
+      这只是示例
+     */
 
     // 对数据进行转换，得到RDD形式的features
+    // SparseVector稀疏向量
     val productFeatures = rescaledDataDF.map{
       row => ( row.getAs[Int]("productId"), row.getAs[SparseVector]("features").toArray )
     }
@@ -83,7 +99,7 @@ object ContentRecommender {
         case (productId, features) => ( productId, new DoubleMatrix(features) )
       }
 
-    // 两两配对商品，计算余弦相似度
+    // 两两配对商品，计算余弦相似度（笛卡尔积必须是RDD）
     val productRecs = productFeatures.cartesian(productFeatures)
       .filter{
         case (a, b) => a._1 != b._1
